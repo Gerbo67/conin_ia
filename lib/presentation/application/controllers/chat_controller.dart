@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:conin_ia/presentation/application/services/http_general_service.dart';
+import 'package:flutter/material.dart';
 
 /// Un controlador sencillo para gestionar operaciones básicas
 class ChatController{
@@ -6,6 +7,8 @@ class ChatController{
   Future<List<String>> obtenerDatos() async {
     // Simulamos una consulta asíncrona
     await Future.delayed(const Duration(seconds: 1));
+    
+    HttpGeneralService.httpGet(url: url)
 
     // Datos de ejemplo
     return ['Elemento 1', 'Elemento 2', 'Elemento 3'];
