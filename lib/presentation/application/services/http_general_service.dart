@@ -3,43 +3,48 @@ import '../../../infrastructure/network/http_manager.dart';
 import '../../../domain/models/messageModelApi.dart';
 
 class HttpGeneralService {
-  static const String defaultHost = '192.168.35.160:3100';
-
+  static String defaultHost = '192.168.35.160:3100';
 
   static Future<String> httpGet({
-    String host = defaultHost,
+    String? host,
     required String path,
     bool authorization = false,
     Map<String, String>? params,
-    http.Client? client}) async {
+    http.Client? client,
+  }) async {
+    host = host ?? defaultHost;
 
     String? response = await httpFunction(
-        type: "GET",
-        host: host,
-        path: path,
-        authorization: authorization,
-        params: params,
-        client: client,
-        log: true);
+      type: "GET",
+      host: host,
+      path: path,
+      authorization: authorization,
+      params: params,
+      client: client,
+      log: true,
+    );
 
     return response ?? "";
   }
 
   static Future<String> httpPost({
-    String host = defaultHost,
+    String? host,
     required String path,
     bool authorization = false,
     required Map<String, dynamic> body,
-    http.Client? client}) async {
+    http.Client? client,
+  }) async {
+    host = host ?? defaultHost;
 
     String? response = await httpFunction(
-        type: "POST",
-        host: host,
-        path: path,
-        authorization: authorization,
-        body: body,
-        client: client,
-        log: true);
+      type: "POST",
+      host: host,
+      path: path,
+      authorization: authorization,
+      body: body,
+      client: client,
+      log: true,
+    );
 
     return response ?? "";
   }

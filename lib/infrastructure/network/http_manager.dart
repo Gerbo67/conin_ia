@@ -23,7 +23,7 @@ Future<String?> httpFunction({
     if (isHttps) {
       url = Uri.https(host, path, params);
     } else {
-      url = Uri.http(host, path, params);
+      url = Uri.https(host, path, params);
     }
 
     if (log) {

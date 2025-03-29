@@ -8,6 +8,9 @@ import 'package:line_icons/line_icons.dart';
 import 'package:shimmer/shimmer.dart';
 import '../application/providers/messageProvider.dart';
 import '../application/controllers/chat_controller.dart';
+import 'package:conin_ia/infrastructure/network/http_manager.dart';
+
+import '../application/services/http_general_service.dart'; // Asegúrate de tener la importación correcta para HttpGeneralService
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -18,6 +21,7 @@ class ChatScreen extends ConsumerStatefulWidget {
 
 class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
+  final TextEditingController _baseUrlController = TextEditingController();
   final ChatController _chatController = ChatController();
   final ScrollController _scrollController = ScrollController();
   bool _isTyping = false;
@@ -26,12 +30,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Inicializamos el controlador con el valor actual de la URL base.
+    _baseUrlController.text = HttpGeneralService.defaultHost;
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
+    _baseUrlController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -49,6 +56,40 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
     });
+  }
+
+  void _showBaseUrlDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Configurar URL Base'),
+          content: TextField(
+            controller: _baseUrlController,
+            decoration: const InputDecoration(
+              labelText: 'URL base',
+              hintText: 'Ingresa la URL base, ej: 192.168.35.160:3100',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  // Actualiza la URL base para usarla en las peticiones.
+                  HttpGeneralService.defaultHost = _baseUrlController.text.trim();
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _sendTextMessage() async {
@@ -115,6 +156,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         ),
         leading: Icon(Icons.arrow_back, color: ColorStyles.primaryColor),
         leadingWidth: 60,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: ColorStyles.primaryColor),
+            onPressed: _showBaseUrlDialog,
+          ),
+        ],
       ),
       backgroundColor: ColorStyles.blankColor,
       body: GestureDetector(
