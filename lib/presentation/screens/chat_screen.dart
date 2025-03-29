@@ -182,10 +182,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                 itemCount: messages.length,
                 itemBuilder: (context, index) {
                   final message = messages[index];
-                  return MessageBubble(
-                    message: message.message,
-                    subject: message.subject,
-                    date: message.date,
+                  return TweenAnimationBuilder<double>(
+                    duration: const Duration(milliseconds: 300),
+                    tween: Tween(begin: 0, end: 1),
+                    curve: Curves.easeOut,
+                    builder: (context, value, child) {
+                      return Transform.translate(
+                        offset: Offset(
+                            (message.subject == 2 ? 1 - value : value - 1) * 50,
+                            0
+                        ),
+                        child: Opacity(
+                          opacity: value,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: MessageBubble(
+                      message: message.message,
+                      subject: message.subject,
+                      date: message.date,
+                    ),
                   );
                 },
               ),
