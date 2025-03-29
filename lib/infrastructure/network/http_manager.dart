@@ -1,57 +1,63 @@
 ﻿import 'dart:convert';
-import 'package:flutter/Material.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-
-
-Future<String?> httpFunction(
-    {required String type,
-      required String path,
-      Object? body,
-      Map<String, String>? headers,
-      Map<String, String>? params,
-      bool log = false,
-      bool successMessage = false,
-      bool authorization = false}) async {
+Future<String?> httpFunction({
+  required String type,
+  required String host, // Ejemplo: "api.ejemplo.com"
+  required String path,
+  http.Client? client,
+  Object? body,
+  Map<String, String>? headers,
+  Map<String, String>? params,
+  bool log = false,
+  bool successMessage = false,
+  bool authorization = false,
+}) async {
   http.Response response = http.Response("", 500);
-  try {
-    // Verifica conexion a internet
-    //if (await InternetConnectionChecker().hasConnection) {
-    //Url de petición
-    Uri url = Uri.http("");
-    /*bool isHttps = FlavorConfig.instance.variables["useHttps"] as bool;
-    String baseUrl = FlavorConfig.instance.variables["baseUrl"].toString();*/
+  Uri url = Uri.http(host, path, params);
+  client ??= http.Client();
 
- /*   if (isHttps) {
-      url = Uri.https(baseUrl, path, params);
+  try {
+    // Construcción de la URL. Si usas HTTPS, ajusta la variable isHttps de acuerdo a tu
+    // lógica o configuración (por ejemplo, mediante FlavorConfig)
+    bool isHttps = true; // Cambia a true si utilizas HTTPS
+    Uri url;
+    if (isHttps) {
+      url = Uri.https(host, path, params);
     } else {
-      url = Uri.http(baseUrl, path, params);
+      url = Uri.http(host, path, params);
+    }
+    if (log) {
+      debugPrint("REQUEST: $url");
     }
 
-    printRich("REQUEST: $url", bold: true, foreground: Colors.blue);*/
-
-    //Agregar encabezados si no están presentes
+    // Agregar encabezados si no están presentes
     headers ??= {};
     headers["Content-type"] = "application/json";
     headers["Accept"] = "*/*";
 
-    //Agregar encabezados personalizados
+    // Agregar encabezados personalizados
     if (authorization) {
-      //String? token = (await storage.read(key: "tokenAuth"));
-      //headers["Authorization"] = 'Bearer $token';
+      // String? token = (await storage.read(key: "tokenAuth"));
+      // headers["Authorization"] = 'Bearer $token';
     }
 
-    body = json.encode(body);
+    String? encodedBody;
+    if (body != null && type.toUpperCase() != "GET") {
+      encodedBody = json.encode(body);
+    }
 
-    //Protocolo de petición
-    late String data;
-    switch (type) {
+    String data = "";
+
+    // Protocolo de petición
+    switch (type.toUpperCase()) {
       case "POST":
-        response = await http.post(url, body: body, headers: headers);
+        response = await http.post(url, body: encodedBody, headers: headers);
         data = response.body;
         break;
       case "PUT":
-        response = await http.put(url, body: body, headers: headers);
+        response = await http.put(url, body: encodedBody, headers: headers);
         data = response.body;
         break;
       case "GET":
@@ -59,36 +65,27 @@ Future<String?> httpFunction(
         data = response.body;
         break;
       case "DELETE":
-        response = await http.delete(url, body: body, headers: headers);
+        response = await http.delete(url, body: encodedBody, headers: headers);
         data = response.body;
         break;
+      default:
+      // Si se pasa un método no soportado, lanza una excepción.
+        throw Exception("Método HTTP no soportado: $type");
     }
 
     // Verificación de respuesta
     if (response.statusCode == 200) {
-    /*  printRich("RESPONSE: ${response.statusCode}",
-          bold: true, foreground: Colors.green);*/
-      // Opcional mensaje de exito
-      if (successMessage) {}
+      if (successMessage) {
+        debugPrint("Operación exitosa: ${response.statusCode}");
+      }
       return data;
     } else {
-     /* printRich("RESPONSE: ${response.statusCode}",
-          bold: true, foreground: Colors.amber);
-      // Error
-      NotificationUI.instance.notificationError();*/
+      debugPrint("Error en la respuesta: ${response.statusCode}");
       return null;
     }
-    /*
-    } else {
-      // No internet
-      NotificationUI.instance.notificationNoInternet();
-      return null;
-    }
-       */
   } catch (e) {
-    //Error
-    /*NotificationUI.instance.notificationError();
-    printRich(e, bold: true, foreground: Colors.red);*/
+    // Manejo de error general
+    debugPrint("Excepción durante la petición HTTP: $e");
     return null;
   }
 }

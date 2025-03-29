@@ -6,7 +6,7 @@ class HttpGeneralService {
         bool authorization = false,
         Map<String, String>? params}) async {
     String? response = await httpFunction(
-        type: "GET", path: url, authorization: authorization, params: params);
+        type: "GET", host: "api.example.com", path: url, authorization: authorization, params: params);
     return (response != null) ? response : "";
   }
   static Future<String> httpPost(
@@ -14,7 +14,7 @@ class HttpGeneralService {
         bool authorization = false,
         required Map<String, dynamic> body}) async {
     String? response = await httpFunction(
-        type: "POST", path: url, authorization: authorization, body: body);
+        type: "POST", host: "api.example.com", path: url, authorization: authorization, body: body);
     return (response != null) ? response : "";
   }
 }
