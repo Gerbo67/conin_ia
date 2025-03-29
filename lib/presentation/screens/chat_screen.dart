@@ -5,10 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:conin_ia/domain/models/messageModel.dart';
 import 'package:line_icons/line_icons.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shimmer/shimmer.dart';
 import '../application/providers/messageProvider.dart';
 import '../application/controllers/chat_controller.dart';
-
 import '../application/services/http_general_service.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -18,19 +18,34 @@ class ChatScreen extends ConsumerStatefulWidget {
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObserver {
+class _ChatScreenState extends ConsumerState<ChatScreen>
+    with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   final TextEditingController _baseUrlController = TextEditingController();
   final ChatController _chatController = ChatController();
   final ScrollController _scrollController = ScrollController();
   bool _isTyping = false;
+  bool _myLocationEnabled = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Inicializamos el controlador con el valor actual de la URL base.
     _baseUrlController.text = HttpGeneralService.defaultHost;
+    _requestLocationPermission();
+  }
+
+  Future<void> _requestLocationPermission() async {
+    final status = await Permission.location.request();
+    if (status.isGranted) {
+      setState(() {
+        _myLocationEnabled = true;
+      });
+    } else {
+      setState(() {
+        _myLocationEnabled = false;
+      });
+    }
   }
 
   @override
@@ -45,7 +60,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
-    // Se detecta el cambio de dimensiones (por ejemplo, al abrir el teclado) y se hace el scroll de golpe.
     _scrollToBottom();
   }
 
@@ -57,7 +71,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     });
   }
 
-  // Método para mostrar el diálogo que permite editar la URL base.
   void _showBaseUrlDialog() {
     showDialog(
       context: context,
@@ -79,9 +92,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
             ElevatedButton(
               onPressed: () {
                 setState(() {
-                  // Se elimina "http://" o "https://" si están presentes.
                   final inputUrl = _baseUrlController.text.trim();
-                  HttpGeneralService.defaultHost = inputUrl.replaceAll(RegExp(r'^https?://'), '');
+                  HttpGeneralService.defaultHost = inputUrl.replaceAll(
+                    RegExp(r'^https?://'),
+                    '',
+                  );
                 });
                 Navigator.of(context).pop();
               },
@@ -117,7 +132,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         ref.read(messageProvider.notifier).addMessage(assistantMessage);
       } else {
         final errorMessage = messageModel(
-          message: "Lo siento, no pude obtener una respuesta. Inténtalo de nuevo.",
+          message:
+              "Lo siento, no pude obtener una respuesta. Inténtalo de nuevo.",
           subject: 1,
           date: DateTime.now(),
         );
@@ -189,19 +205,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                     builder: (context, value, child) {
                       return Transform.translate(
                         offset: Offset(
-                            (message.subject == 2 ? 1 - value : value - 1) * 50,
-                            0
+                          (message.subject == 2 ? 1 - value : value - 1) * 50,
+                          0,
                         ),
-                        child: Opacity(
-                          opacity: value,
-                          child: child,
-                        ),
+                        child: Opacity(opacity: value, child: child),
                       );
                     },
                     child: MessageBubble(
                       message: message.message,
                       subject: message.subject,
                       date: message.date,
+                      myLocationEnabled: _myLocationEnabled,
                     ),
                   );
                 },
@@ -232,15 +246,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
                 ),
               ),
             Container(
-              padding: const EdgeInsets.only(bottom: 8.0),
+              padding: const EdgeInsets.only(bottom: 4.0),
               child: Container(
                 margin: const EdgeInsets.symmetric(
                   horizontal: 16.0,
-                  vertical: 16.0,
+                  vertical: 8.0,
                 ),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 12.0,
+                  horizontal: 10.0,
+                  vertical: 4.0,
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
