@@ -8,9 +8,8 @@ import 'package:line_icons/line_icons.dart';
 import 'package:shimmer/shimmer.dart';
 import '../application/providers/messageProvider.dart';
 import '../application/controllers/chat_controller.dart';
-import 'package:conin_ia/infrastructure/network/http_manager.dart';
 
-import '../application/services/http_general_service.dart'; // Asegúrate de tener la importación correcta para HttpGeneralService
+import '../application/services/http_general_service.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -58,6 +57,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
     });
   }
 
+  // Método para mostrar el diálogo que permite editar la URL base.
   void _showBaseUrlDialog() {
     showDialog(
       context: context,
@@ -79,8 +79,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
             ElevatedButton(
               onPressed: () {
                 setState(() {
-                  // Actualiza la URL base para usarla en las peticiones.
-                  HttpGeneralService.defaultHost = _baseUrlController.text.trim();
+                  // Se elimina "http://" o "https://" si están presentes.
+                  final inputUrl = _baseUrlController.text.trim();
+                  HttpGeneralService.defaultHost = inputUrl.replaceAll(RegExp(r'^https?://'), '');
                 });
                 Navigator.of(context).pop();
               },
