@@ -1,8 +1,11 @@
+import 'package:conin_ia/presentation/screens/styles.dart';
+import 'package:conin_ia/presentation/screens/widgets/MessageBubble.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:intl/intl.dart';
-import 'package:conin_ia/domain/models/messageModel.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:conin_ia/domain/models/messageModel.dart';
+import 'package:line_icons/line_icons.dart';
+import 'package:shimmer/shimmer.dart';
 import '../application/providers/messageProvider.dart';
 import '../application/controllers/chat_controller.dart';
 
@@ -16,47 +19,47 @@ class ChatScreen extends ConsumerStatefulWidget {
 class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ChatController _chatController = ChatController();
+  final ScrollController _scrollController = ScrollController();
   bool _isTyping = false;
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
 
   void _sendTextMessage() async {
     if (_controller.text.trim().isEmpty) return;
-
-    // Guardar el texto del usuario
     final userMessage = messageModel(
       message: _controller.text,
-      subject: 2, // 2 representa al usuario
+      subject: 2,
       date: DateTime.now(),
     );
-
-    // Añadir mensaje del usuario a la lista
     ref.read(messageProvider.notifier).addMessage(userMessage);
-
-    // Limpiar el campo de texto
-    final userQuestion = _controller.text;
     _controller.clear();
-
-    // Mostrar indicador de escritura
     setState(() {
       _isTyping = true;
     });
-
+    _scrollToBottom();
     try {
-      // Enviar pregunta a la API y esperar respuesta
-      final assistantMessage = await _chatController.enviarPregunta(userQuestion);
-
-      // Ocultar indicador de escritura
+      final assistantMessage = await _chatController.enviarPregunta(
+        userMessage.message,
+      );
       setState(() {
         _isTyping = false;
       });
-
-      // Añadir respuesta si es válida
       if (assistantMessage != null) {
         ref.read(messageProvider.notifier).addMessage(assistantMessage);
       } else {
-        // Manejar error - mostrar mensaje de error como respuesta
         final errorMessage = messageModel(
           message: "Lo siento, no pude obtener una respuesta. Inténtalo de nuevo.",
-          subject: 1, // 1 representa al asistente
+          subject: 1,
           date: DateTime.now(),
         );
         ref.read(messageProvider.notifier).addMessage(errorMessage);
@@ -67,126 +70,124 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       });
       print("Error al enviar mensaje: $e");
     }
+    _scrollToBottom();
   }
 
   @override
   Widget build(BuildContext context) {
     final messages = ref.watch(messageProvider);
-    final screenHeight = MediaQuery.of(context).size.height;
-
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: const Text('ConinIA Chat'),
+        title: const Text(
+          'ChatBot',
+          style: TextStyle(
+            color: ColorStyles.primaryColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
+        backgroundColor: ColorStyles.blankColor,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: ColorStyles.blankColor,
+          statusBarIconBrightness: Brightness.dark,
+        ),
+        leading: Icon(Icons.arrow_back, color: ColorStyles.primaryColor),
+        leadingWidth: 60,
       ),
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SizedBox(
+      backgroundColor: ColorStyles.blankColor,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
         child: Column(
           children: [
             Expanded(
               flex: 6,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: ListView.builder(
-                      padding: EdgeInsets.only(
-                        top: 8.0,
-                        left: 8.0,
-                        right: 8.0,
-                        bottom: screenHeight * 0.08 + 80,
-                      ),
-                      itemCount: messages.length,
-                      itemBuilder: (context, index) {
-                        final message = messages[index];
-                        final bool isAssistant = message.subject == 1;
-                        final formattedTime = DateFormat('hh:mm a').format(message.date);
-
-                        return Container(
-                          alignment: isAssistant ? Alignment.centerLeft : Alignment.centerRight,
-                          margin: const EdgeInsets.symmetric(vertical: 4.0),
-                          child: Column(
-                            crossAxisAlignment: isAssistant ? CrossAxisAlignment.start : CrossAxisAlignment.end,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12.0),
-                                decoration: BoxDecoration(
-                                  color: isAssistant ? Colors.grey[300] : Colors.blue[100],
-                                  borderRadius: BorderRadius.circular(8.0),
-                                ),
-                                child: MarkdownBody(
-                                  data: message.message,
-                                  styleSheet: MarkdownStyleSheet(
-                                    p: TextStyle(fontSize: 16),
-                                    // Puedes personalizar más estilos aquí
-                                  ),
-                                  selectable: true,
-                                ),
-                              ),
-                              const SizedBox(height: 4.0),
-                              Text(
-                                formattedTime,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  if (_isTyping)
-                    Container(
-                      alignment: Alignment.centerLeft,
-                      margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-                      padding: const EdgeInsets.all(12.0),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: const Text('ConinIA está escribiendo...'),
-                    ),
-                ],
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.only(
+                  top: 8.0,
+                  left: 8.0,
+                  right: 8.0,
+                  bottom: 16.0,
+                ),
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  final message = messages[index];
+                  return MessageBubble(
+                    message: message.message,
+                    subject: message.subject,
+                    date: message.date,
+                  );
+                },
               ),
             ),
-            Expanded(
+            if (_isTyping)
+              Container(
+                alignment: Alignment.centerLeft,
+                margin: const EdgeInsets.symmetric(
+                  vertical: 2.0,
+                  horizontal: 16.0,
+                ),
+                padding: const EdgeInsets.all(12.0),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                child: Shimmer.fromColors(
+                  baseColor: Colors.purple[700]!,
+                  highlightColor: Colors.purple[300]!,
+                  child: Text(
+                    'ConinIA está escribiendo...',
+                    style: const TextStyle(
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            Container(
+              padding: const EdgeInsets.only(bottom: 8.0),
               child: Container(
-                color: Theme.of(context).scaffoldBackgroundColor,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8.0,
-                    vertical: 6.0,
-                  ),
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 30.0,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: const BorderRadius.all(Radius.circular(40)),
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.mic),
-                        onPressed: () {}, // Funcionalidad de micrófono para futura implementación
-                      ),
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          decoration: const InputDecoration(
-                            hintText: 'Escribe tu pregunta...',
-                            border: InputBorder.none,
-                          ),
-                          onSubmitted: (_) => _sendTextMessage(),
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 16.0,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 12.0,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(40),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(LineIcons.paperclip),
+                      onPressed: () {},
+                    ),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        decoration: const InputDecoration(
+                          hintText: 'Escribe tu pregunta...',
+                          border: InputBorder.none,
                         ),
+                        onSubmitted: (_) => _sendTextMessage(),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: _sendTextMessage,
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.send,
+                        color: ColorStyles.primaryColor,
                       ),
-                    ],
-                  ),
+                      onPressed: _sendTextMessage,
+                    ),
+                  ],
                 ),
               ),
             ),
