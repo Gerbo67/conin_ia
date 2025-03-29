@@ -1,18 +1,31 @@
-﻿import 'dart:math';
+﻿import 'package:conin_ia/domain/models/messageModel.dart';
+import 'package:conin_ia/domain/models/messageModelApi.dart';
+import 'package:conin_ia/presentation/application/services/http_general_service.dart';
 
-import 'package:conin_ia/domain/models/messageModel.dart';
+class ChatController {
+  static const String agentePath = '/api/agente/question';
 
-/// Un controlador sencillo para gestionar operaciones básicas
-class ChatController{
-
-  Future<List<MessageModel>> obtenerDatos() async {
-    final random = Random();
-    return List.generate(10, (index) {
-      return MessageModel(
-        message: "Mensaje $index",
-        subject: random.nextInt(2), // Genera un valor aleatorio entre 0 y 1
-        date: DateTime.now().subtract(Duration(minutes: index)),
+  Future<messageModel?> enviarPregunta(String question) async {
+    try {
+      // Enviar pregunta a la API
+      final response = await HttpGeneralService.httpPost(
+          path: agentePath,
+          body: {'message': question}
       );
-    });
+
+      // Convertir respuesta a MessageModelApi
+      final apiResponse = messageApiFromJson(response);
+
+      // Convertir MessageModelApi a messageModel para mostrar en chat
+      return messageModel(
+        message: apiResponse.data.answer,
+        subject: 1, // 1 representa al asistente
+        date: DateTime.now(),
+      );
+          return null;
+    } catch (e) {
+      print("Error al enviar pregunta: $e");
+      return null;
+    }
   }
 }

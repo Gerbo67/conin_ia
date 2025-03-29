@@ -1,97 +1,82 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
+import 'package:conin_ia/domain/models/messageModel.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../application/providers/messageProvider.dart';
+import '../application/controllers/chat_controller.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Chat Demo',
-      theme: ThemeData.light(), // Se usa siempre el tema claro
-      home: const ChatScreen(),
-    );
-  }
-}
-
-class ChatScreen extends StatefulWidget {
-  const ChatScreen({Key? key}) : super(key: key);
+class ChatScreen extends ConsumerStatefulWidget {
+  const ChatScreen({super.key});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends ConsumerState<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
-
-  // Lista de mensajes: cada mensaje tiene 'sender', 'text' y 'timestamp'
-  final List<Map<String, dynamic>> _messages = [
-    {
-      'sender': 'Asistente',
-      'text': 'Hola! Soy tu asistente virtual. ¿En qué puedo ayudarte hoy?',
-      'timestamp': DateTime.now(),
-    },
-  ];
-
+  final ChatController _chatController = ChatController();
   bool _isTyping = false;
 
-  // Agrega un mensaje a la lista.
-  void _addMessage(String sender, String text) {
-    setState(() {
-      _messages.add({
-        'sender': sender,
-        'text': text,
-        'timestamp': DateTime.now(),
-      });
-    });
-  }
+  void _sendTextMessage() async {
+    if (_controller.text.trim().isEmpty) return;
 
-  // Envía un mensaje de texto.
-  void _sendTextMessage() {
-    final text = _controller.text.trim();
-    if (text.isNotEmpty) {
-      _addMessage('Usuario', text);
-      _controller.clear();
-      _simulateAssistantResponse();
-    }
-  }
+    // Guardar el texto del usuario
+    final userMessage = messageModel(
+      message: _controller.text,
+      subject: 2, // 2 representa al usuario
+      date: DateTime.now(),
+    );
 
-  // Envía un mensaje de audio (simulado).
-  void _sendAudioMessage() {
-    _addMessage('Usuario', 'Mensaje de audio enviado');
-    _simulateAssistantResponse();
-  }
+    // Añadir mensaje del usuario a la lista
+    ref.read(messageProvider.notifier).addMessage(userMessage);
 
-  // Envía un archivo adjunto (simulado).
-  void _sendFileMessage() {
-    _addMessage('Usuario', 'Archivo adjunto enviado');
-    _simulateAssistantResponse();
-  }
+    // Limpiar el campo de texto
+    final userQuestion = _controller.text;
+    _controller.clear();
 
-  // Simula que el asistente está escribiendo durante 2 segundos.
-  void _simulateAssistantResponse() {
+    // Mostrar indicador de escritura
     setState(() {
       _isTyping = true;
     });
-    Future.delayed(const Duration(seconds: 2), () {
+
+    try {
+      // Enviar pregunta a la API y esperar respuesta
+      final assistantMessage = await _chatController.enviarPregunta(userQuestion);
+
+      // Ocultar indicador de escritura
       setState(() {
-        _addMessage('Asistente', 'Esta es una respuesta automática.');
         _isTyping = false;
       });
-    });
+
+      // Añadir respuesta si es válida
+      if (assistantMessage != null) {
+        ref.read(messageProvider.notifier).addMessage(assistantMessage);
+      } else {
+        // Manejar error - mostrar mensaje de error como respuesta
+        final errorMessage = messageModel(
+          message: "Lo siento, no pude obtener una respuesta. Inténtalo de nuevo.",
+          subject: 1, // 1 representa al asistente
+          date: DateTime.now(),
+        );
+        ref.read(messageProvider.notifier).addMessage(errorMessage);
+      }
+    } catch (e) {
+      setState(() {
+        _isTyping = false;
+      });
+      print("Error al enviar mensaje: $e");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final messages = ref.watch(messageProvider);
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chat Demo'),
+        title: const Text('ConinIA Chat'),
       ),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SizedBox(
@@ -107,38 +92,33 @@ class _ChatScreenState extends State<ChatScreen> {
                         top: 8.0,
                         left: 8.0,
                         right: 8.0,
-                        // Dejamos espacio para la barra de entrada (8% + 80 píxeles extra)
                         bottom: screenHeight * 0.08 + 80,
                       ),
-                      itemCount: _messages.length,
+                      itemCount: messages.length,
                       itemBuilder: (context, index) {
-                        final message = _messages[index];
-                        final bool isAssistant =
-                            message['sender'] == 'Asistente';
-                        final formattedTime =
-                        DateFormat('hh:mm a').format(message['timestamp']);
+                        final message = messages[index];
+                        final bool isAssistant = message.subject == 1;
+                        final formattedTime = DateFormat('hh:mm a').format(message.date);
 
                         return Container(
-                          alignment: isAssistant
-                              ? Alignment.centerLeft
-                              : Alignment.centerRight,
+                          alignment: isAssistant ? Alignment.centerLeft : Alignment.centerRight,
                           margin: const EdgeInsets.symmetric(vertical: 4.0),
                           child: Column(
-                            crossAxisAlignment: isAssistant
-                                ? CrossAxisAlignment.start
-                                : CrossAxisAlignment.end,
+                            crossAxisAlignment: isAssistant ? CrossAxisAlignment.start : CrossAxisAlignment.end,
                             children: [
                               Container(
                                 padding: const EdgeInsets.all(12.0),
                                 decoration: BoxDecoration(
-                                  color: isAssistant
-                                      ? Colors.grey[300]
-                                      : Colors.blue[100],
+                                  color: isAssistant ? Colors.grey[300] : Colors.blue[100],
                                   borderRadius: BorderRadius.circular(8.0),
                                 ),
-                                child: Text(
-                                  message['text'],
-                                  style: const TextStyle(fontSize: 16),
+                                child: MarkdownBody(
+                                  data: message.message,
+                                  styleSheet: MarkdownStyleSheet(
+                                    p: TextStyle(fontSize: 16),
+                                    // Puedes personalizar más estilos aquí
+                                  ),
+                                  selectable: true,
                                 ),
                               ),
                               const SizedBox(height: 4.0),
@@ -155,20 +135,20 @@ class _ChatScreenState extends State<ChatScreen> {
                       },
                     ),
                   ),
-                  // Indicador de "Escribiendo..." justo encima de la barra de entrada.
                   if (_isTyping)
                     Container(
+                      alignment: Alignment.centerLeft,
+                      margin: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
                       padding: const EdgeInsets.all(12.0),
                       decoration: BoxDecoration(
                         color: Colors.grey[300],
                         borderRadius: BorderRadius.circular(8.0),
                       ),
-                      child: const Text('Asistente está escribiendo...'),
+                      child: const Text('ConinIA está escribiendo...'),
                     ),
                 ],
               ),
             ),
-            // Barra de entrada (botones + TextField)
             Expanded(
               child: Container(
                 color: Theme.of(context).scaffoldBackgroundColor,
@@ -187,28 +167,20 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   child: Row(
                     children: [
-                      // Botón para enviar mensaje de audio.
                       IconButton(
                         icon: const Icon(Icons.mic),
-                        onPressed: _sendAudioMessage,
+                        onPressed: () {}, // Funcionalidad de micrófono para futura implementación
                       ),
-                      // Botón para enviar archivo adjunto.
-                      IconButton(
-                        icon: const Icon(Icons.attach_file),
-                        onPressed: _sendFileMessage,
-                      ),
-                      // Campo de texto.
                       Expanded(
                         child: TextField(
                           controller: _controller,
                           decoration: const InputDecoration(
-                            hintText: 'Escribe tu mensaje...',
+                            hintText: 'Escribe tu pregunta...',
                             border: InputBorder.none,
                           ),
                           onSubmitted: (_) => _sendTextMessage(),
                         ),
                       ),
-                      // Botón para enviar mensaje de texto.
                       IconButton(
                         icon: const Icon(Icons.send),
                         onPressed: _sendTextMessage,

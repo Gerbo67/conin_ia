@@ -1,17 +1,17 @@
-class MessageModel {
+class messageModel {
   final String message;
   final int subject;
   final DateTime date;
 
-  MessageModel({
+  messageModel({
     required this.message,
     required this.subject,
     required this.date,
   });
 
   // Método para convertir un objeto JSON a una instancia de MessageModel
-  factory MessageModel.fromJson(Map<String, dynamic> json) {
-    return MessageModel(
+  factory messageModel.fromJson(Map<String, dynamic> json) {
+    return messageModel(
       message: json['message'],
       subject: json['subject'],
       date: DateTime.parse(json['date']),
