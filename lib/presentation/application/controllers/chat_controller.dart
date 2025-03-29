@@ -4,27 +4,28 @@ import 'package:conin_ia/presentation/application/services/http_general_service.
 
 class ChatController {
   static const String agentePath = '/api/agente/question';
+  static String? _sessionId;
 
   Future<messageModel?> enviarPregunta(String question) async {
     try {
-      // Enviar pregunta a la API
+      Map<String, dynamic> body = {'message': question};
+      if (_sessionId != null && _sessionId!.isNotEmpty) {
+        body['sessionId'] = _sessionId;
+      }
       final response = await HttpGeneralService.httpPost(
-          path: agentePath,
-          body: {'message': question}
-      );
-
-      // Convertir respuesta a MessageModelApi
+          path: agentePath, body: body);
       final apiResponse = messageApiFromJson(response);
-
-      // Convertir MessageModelApi a messageModel para mostrar en chat
+      if (apiResponse.data.sessionId.isNotEmpty) {
+        if (_sessionId != apiResponse.data.sessionId) {
+          _sessionId = apiResponse.data.sessionId;
+        }
+      }
       return messageModel(
         message: apiResponse.data.answer,
-        subject: 1, // 1 representa al asistente
+        subject: 1,
         date: DateTime.now(),
       );
-          return null;
     } catch (e) {
-      print("Error al enviar pregunta: $e");
       return null;
     }
   }

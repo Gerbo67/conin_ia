@@ -1,7 +1,3 @@
-// To parse this JSON data, do
-//
-//     final messageApi = messageApiFromJson(jsonString);
-
 import 'dart:convert';
 
 MessageModelApi messageApiFromJson(String str) => MessageModelApi.fromJson(json.decode(str));
@@ -33,20 +29,24 @@ class MessageModelApi {
 }
 
 class Data {
+  String sessionId;
   String question;
   String answer;
 
   Data({
+    required this.sessionId,
     required this.question,
     required this.answer,
   });
 
   factory Data.fromJson(Map<String, dynamic> json) => Data(
+    sessionId: json["sessionId"],
     question: json["question"],
     answer: json["answer"],
   );
 
   Map<String, dynamic> toJson() => {
+    "sessionId": sessionId,
     "question": question,
     "answer": answer,
   };
